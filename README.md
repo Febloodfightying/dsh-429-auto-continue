@@ -12,8 +12,7 @@ DSH (DeepSeek Harness) 插件：回合因 **HTTP 429 / 限流 / 配额耗尽** �
 - 重试耗尽 / 不在重试范围内 -> 回合以 429 类失败结束 -> 本插件等 delayMs
   后自动发送「继续任务」。
 
-检测信号：turn/end 失败里 status === 429（覆盖商汤 SenseNova 会被归类成
-QUOTA 的 429 insufficient_quota），或错误码在 codes 白名单
+检测信号：turn/end 失败里 status === 429，或错误码在 codes 白名单
 （默认 RATE_LIMIT / QUOTA）。
 
 ## 功能

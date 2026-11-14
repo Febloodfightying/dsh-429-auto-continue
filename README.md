@@ -4,34 +4,54 @@ DSH (DeepSeek Harness) 插件：回合因 **HTTP 429 / 限流 / 配额耗尽** �
 等待可配置的延迟（默认 10 秒）后自动向同一会话发送「继续任务」——效果等同于
 手动输入，任务自动接着跑，不用人守着。
 
-## 定位
+A DSH (DeepSeek Harness) plugin: when a turn ends in failure due to **HTTP 429 / rate limiting / quota exhaustion**, it waits a configurable delay (10 seconds by default) and then automatically sends "continue the task" to the same session — the same as typing it by hand, so the task keeps running without anyone watching.
+
+> 本 README 为中英双语：中文原文在前，英文译文紧随其后。
+> This README is bilingual: Chinese first, English translation follows.
+
+## 定位 Positioning
 
 这是内置重试链（dsh-llm-retry、dsh-retry-boost 等）之后的**最后一道网**：
+
+This is the **last line of defense** after the built-in retry chain (dsh-llm-retry, dsh-retry-boost, etc.):
 
 - 重试还在进行中 -> 回合没有死 -> 本插件不打扰；
 - 重试耗尽 / 不在重试范围内 -> 回合以 429 类失败结束 -> 本插件等 delayMs
   后自动发送「继续任务」。
 
+- Retries still in progress -> the turn is not dead -> this plugin stays out of the way;
+- Retries exhausted / not covered by retry -> the turn ends with a 429-class failure -> this plugin waits delayMs and then automatically sends "continue the task".
+
 检测信号：turn/end 失败里 status === 429，或错误码在 codes 白名单
 （默认 RATE_LIMIT / QUOTA）。
 
-## 功能
+Detection signal: status === 429 in a turn/end failure, or an error code in the codes allowlist (RATE_LIMIT / QUOTA by default).
+
+## 功能 Features
 
 - **总开关**（enable）：关闭后完全不监听、不发送。
+  **Master switch** (`enable`): when off, it neither listens nor sends anything.
 - **延迟**（delayMs）：429 后等待多少毫秒再自动发送。
+  **Delay** (`delayMs`): how many milliseconds to wait after a 429 before sending.
 - **发送内容**（message）：自动发送的文本，等效手动输入。
+  **Message** (`message`): the text sent automatically; equivalent to typing it manually.
 - **错误码白名单**（codes）：逗号分隔；HTTP 429 始终触发，与白名单无关。
   留空则只认 429。
+  **Error-code allowlist** (`codes`): comma-separated; HTTP 429 always triggers regardless of the allowlist. If empty, only 429 counts.
 - **排除子会话**（excludeSubagents）：不为后台子任务乱发消息。
+  **Exclude subagents** (`excludeSubagents`): never sends stray messages for background subtasks.
 - **连续继续次数上限**（maxContinues，默认 3，0 = 不限）：同一会话连续自动
   继续达到上限后停手，防止 429 反复触发时无限循环消耗配额。计数只在回合以
   429 类失败结束时累加；回合正常结束、出现非 429 类错误或用户手动追加消息都会清零。
+  **Max consecutive continues** (`maxContinues`, default 3, 0 = unlimited): stops auto-continuing once the limit is reached in the same session, preventing an endless loop that burns quota when 429s keep firing. The counter only increases when a turn ends with a 429-class failure; it resets on a normal turn end, a non-429 error, or a manual message from the user.
 - **防打扰**：同会话连续失败只保留最新一个定时器（防抖）；定时期间用户手动输入
   或新回合开始（turn/start）立即取消。
+  **No-nag design**: for consecutive failures in the same session only the newest timer is kept (debounced); a manual input or a new turn (turn/start) cancels it immediately.
 - **设置界面**：在 dsh web 总设置界面注册「429 自动继续」入口，所有配置
   可视化编辑（编辑只在本地草稿，点「保存」一次性写入）。
+  **Settings UI**: registers a "429 Auto-Continue" entry in the dsh web settings screen, with every option editable visually (edits are kept in a local draft and written in one go when "Save" is clicked).
 
-## 安装
+## 安装 Install
 
 ```bash
 dsh plugin --profile web add dsh-429-auto-continue
@@ -40,26 +60,30 @@ dsh plugin --profile web add dsh-429-auto-continue
 或手动放入 profile 的 node_modules 并在 package.json 的
 dependencies / dsh.profile.bundles 里登记。装完**重启 DSH** 生效。
 
-## 配置
+Or put it into the profile's node_modules manually and register it in package.json's dependencies / dsh.profile.bundles. **Restart DSH** after installing.
+
+## 配置 Configuration
 
 配置在 dsh web 设置界面（设置 -> 429 自动继续）可视化编辑，写入
 cordis.patch.yml。也可直接改 patch：
 
-| 键 | 默认值 | 含义 |
-| --- | --- | --- |
-| enable | true | 总开关 |
-| delayMs | 10000 | 429 后等待毫秒数（0~3600000） |
-| message | 继续任务 | 自动发送的文本 |
-| codes | [RATE_LIMIT, QUOTA] | 触发错误码白名单 |
-| excludeSubagents | true | 排除子会话 |
-| maxContinues | 3 | 连续自动继续次数上限（0 = 不限）；正常结束/非 429 错误/手动输入清零计数 |
+Configuration is edited visually in the dsh web settings screen (Settings -> 429 Auto-Continue) and written to cordis.patch.yml. You can also edit the patch directly:
 
-## 开发
+| 键 Key | 默认值 Default | 含义 Meaning |
+| --- | --- | --- |
+| enable | true | 总开关 / master switch |
+| delayMs | 10000 | 429 后等待毫秒数（0~3600000）/ milliseconds to wait after a 429 (0–3600000) |
+| message | 继续任务 | 自动发送的文本 / text sent automatically |
+| codes | [RATE_LIMIT, QUOTA] | 触发错误码白名单 / triggering error-code allowlist |
+| excludeSubagents | true | 排除子会话 / exclude subagents |
+| maxContinues | 3 | 连续自动继续次数上限（0 = 不限）；正常结束/非 429 错误/手动输入清零计数 / max consecutive auto-continues (0 = unlimited); the counter resets on a normal end, a non-429 error, or a manual input |
+
+## 开发 Development
 
 ```bash
-npm run check   # node --check 两个入口
+npm run check   # node --check 两个入口 / node --check both entry points
 ```
 
-## 许可
+## 许可 License
 
 MIT

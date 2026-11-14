@@ -1,6 +1,6 @@
 {
   "name": "dsh-429-auto-continue",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "DSH plugin: when a turn dies from HTTP 429 / rate-limit / quota exhaustion, wait a configurable delay and automatically send a continue message to the same session so the task resumes by itself. (429 兜底插件：回合因 429/限流/配额耗尽失败后，自动发送「继续任务」让任务接着跑。)",
   "keywords": [
     "deepseek-harness",
